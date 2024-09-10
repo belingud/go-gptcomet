@@ -8,6 +8,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
+	"github.com/belingud/gptcommit/internal/config"
 )
 
 var SupportedProviders = []string{"openai", "groq", "ollama", "azure", "anthropic", "watsonx", "mistral", "cohere"}
@@ -21,6 +24,11 @@ var setupCmd = &cobra.Command{
 	Short: "Set up gptcommit",
 	Long:  "Set up gptcommit",
 	Run: func(cmd *cobra.Command, args []string) {
+		var providerConfig config.ProviderConfig
+		// provider := viper.GetString("provider")
+		viper.GetStringSlice("file_ignore")
+
+		fmt.Println(providerConfig)
 		// light blue
 		labelStyle := lipgloss.NewStyle().
 			Padding(0, 1, 0, 1).
