@@ -36,7 +36,7 @@ var setupCmd = &cobra.Command{
 		}
 
 		apiKeyPrompt := promptui.Prompt{
-			Label: labelStyle.Render("Enter API key"),
+			Label: "API key",
 			// HideEntered: true,
 			Mask: '*',
 		}

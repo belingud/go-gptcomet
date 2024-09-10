@@ -112,8 +112,11 @@ func initConfig(rootCmd *cobra.Command) {
 	if err != nil {
 		logger.Fatal(fmt.Errorf("%s", err))
 	}
-	verbose := viper.GetBool("verbose")
-	viper.Set("verbose", nil)
+	verbose, err := rootCmd.Flags().GetBool("verbose")
+	if err != nil {
+		logger.Error(err)
+		os.Exit(1)
+	}
 	if verbose {
 		// Set log level to debug, print verbose log
 		logger.SetLevel(log.DebugLevel)
