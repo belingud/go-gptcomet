@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// BaseConfig 定义了所有提供者共有的配置字段
+// BaseConfig defines configuration fields common to all providers
 type BaseConfig struct {
 	Verbose            bool     `mapstructure:"verbose"`
 	FileIgnore         []string `mapstructure:"file_ignore"`
@@ -15,89 +15,104 @@ type BaseConfig struct {
 	BriefCommitMessage string   `mapstructure:"prompt.brief_commit_message"`
 }
 
-// ProviderConfig 定义了特定提供者的配置接口
+// ProviderConfig defines the interface for provider-specific configuration
 type ProviderConfig interface {
 	LoadConfig(v *viper.Viper)
 }
 
-// GroqConfig 定义了 Groq 提供者特定的配置字段
+// GroqConfig defines Groq provider-specific configuration fields
 type GroqConfig struct {
-	BaseConfig
-	APIBase     string  `mapstructure:"api_base"`
-	APIKey      string  `mapstructure:"api_key"`
-	Model       string  `mapstructure:"model"`
-	MaxTokens   int     `mapstructure:"max_tokens"`
-	Temperature float64 `mapstructure:"temperature"`
-	TopP        float64 `mapstructure:"top_p"`
+	Base        BaseConfig `mapstructure:",squash"`
+	APIBase     string    `mapstructure:"api_base"`
+	APIKey      string    `mapstructure:"api_key"`
+	Model       string    `mapstructure:"model"`
+	MaxTokens   int       `mapstructure:"max_tokens"`
+	Temperature float64   `mapstructure:"temperature"`
+	TopP        float64   `mapstructure:"top_p"`
 }
 
-// OpenAIConfig 定义了 OpenAI 提供者特定的配置字段
+// OpenAIConfig defines OpenAI provider-specific configuration fields
 type OpenAIConfig struct {
-	BaseConfig
-	APIBase      string  `mapstructure:"api_base"`
-	APIKey       string  `mapstructure:"api_key"`
-	ExtraHeaders string  `mapstructure:"extra_headers"`
-	Model        string  `mapstructure:"model"`
-	Proxy        string  `mapstructure:"proxy"`
-	Retries      int     `mapstructure:"retries"`
-	Temperature  float64 `mapstructure:"temperature"`
-	TopP         float64 `mapstructure:"top_p"`
+	Base         BaseConfig `mapstructure:",squash"`
+	APIBase      string    `mapstructure:"api_base"`
+	APIKey       string    `mapstructure:"api_key"`
+	ExtraHeaders string    `mapstructure:"extra_headers"`
+	Model        string    `mapstructure:"model"`
+	Proxy        string    `mapstructure:"proxy"`
+	Retries      int       `mapstructure:"retries"`
+	Temperature  float64   `mapstructure:"temperature"`
+	TopP         float64   `mapstructure:"top_p"`
 }
 
-// LoadConfig 实现了 ProviderConfig 接口
+// LoadConfig implements the ProviderConfig interface
 func (g *GroqConfig) LoadConfig(v *viper.Viper) {
 	v.UnmarshalKey("groq", &g)
 }
 
-// LoadConfig 实现了 ProviderConfig 接口
+// LoadConfig implements the ProviderConfig interface
 func (o *OpenAIConfig) LoadConfig(v *viper.Viper) {
 	v.UnmarshalKey("openai", &o)
 }
 
-// Config 定义了整个配置文件的结构
-type Config struct {
-	Provider string `mapstructure:"provider"`
-	BaseConfig
-	ProviderConfig
+// RootConfig defines the structure of the entire configuration file
+type RootConfig struct {
+	Provider       string         `mapstructure:"provider"`
+	Base          BaseConfig     `mapstructure:",squash"`
+	ProviderConf  ProviderConfig `mapstructure:"-"`
 }
 
-func main() {
-	// 初始化 Viper
+func LoadConfig() (*RootConfig, error) {
+	// Initialize Viper
 	v := viper.New()
-	v.SetConfigName("config") // 配置文件名称（不包括文件扩展名）
-	v.SetConfigType("yaml")   // 配置文件类型
-	v.AddConfigPath(".")      // 配置文件搜索路径
+	v.SetConfigName("config") // Configuration file name (without extension)
+	v.SetConfigType("yaml")   // Configuration file type
+	v.AddConfigPath(".")      // Configuration file search path
 
-	// 读取配置文件
+	// Read configuration file
 	if err := v.ReadInConfig(); err != nil {
-		log.Fatalf("Error reading config file, %s", err)
+		return nil, fmt.Errorf("error reading config file: %w", err)
 	}
 
-	// 定义结构体
-	var config Config
+	// Define structure
+	config := &RootConfig{}
 
-	// 根据 provider 字段的值，选择相应的配置
+	// Parse provider field first
+	if err := v.UnmarshalKey("provider", &config.Provider); err != nil {
+		return nil, fmt.Errorf("error unmarshaling provider: %w", err)
+	}
+
+	// Choose appropriate configuration based on provider field value
 	switch config.Provider {
 	case "groq":
 		groqConfig := &GroqConfig{}
 		groqConfig.LoadConfig(v)
-		config.BaseConfig = groqConfig.BaseConfig
-		config.ProviderConfig = groqConfig
+		config.Base = groqConfig.Base
+		config.ProviderConf = groqConfig
 	case "openai":
 		openaiConfig := &OpenAIConfig{}
 		openaiConfig.LoadConfig(v)
-		config.BaseConfig = openaiConfig.BaseConfig
-		config.ProviderConfig = openaiConfig
+		config.Base = openaiConfig.Base
+		config.ProviderConf = openaiConfig
 	default:
-		log.Fatalf("Unknown provider: %s", config.Provider)
+		return nil, fmt.Errorf("unknown provider: %s", config.Provider)
 	}
 
-	// 使用配置
+	return config, nil
+}
+
+func main() {
+	// Load configuration
+	config, err := LoadConfig()
+	if err != nil {
+		log.Fatalf("Error loading config: %s", err)
+	}
+
+	// Use configuration
 	fmt.Printf("Provider: %s\n", config.Provider)
-	if groqConfig, ok := config.ProviderConfig.(*GroqConfig); ok {
+	if groqConfig, ok := config.ProviderConf.(*GroqConfig); ok {
 		fmt.Printf("Groq API Base: %s\n", groqConfig.APIBase)
 	}
-	if openaiConfig, ok := config.ProviderConfig.(*OpenAIConfig); ok {
+	if openaiConfig, ok := config.ProviderConf.(*OpenAIConfig); ok {
 		fmt.Printf("OpenAI API Base: %s\n", openaiConfig.APIBase)
 	}
 }

@@ -1,6 +1,6 @@
-module github.com/belingud
+module github.com/belingud/gptcommit
 
-go 1.23.0
+go 1.23.3
 
 require (
 	github.com/charmbracelet/lipgloss v0.13.0

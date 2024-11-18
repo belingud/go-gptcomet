@@ -9,8 +9,11 @@ import (
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 
 	"github.com/belingud/gptcommit/internal/config"
+	"github.com/belingud/gptcommit/internal/logger"
+	"path/filepath"
 )
 
 var SupportedProviders = []string{"openai", "groq", "ollama", "azure", "anthropic", "watsonx", "mistral", "cohere"}
@@ -100,5 +103,40 @@ var setupCmd = &cobra.Command{
 		fmt.Println(apiKey)
 		fmt.Println(provider)
 		fmt.Println(model)
+
+		// Create config directory if it doesn't exist
+		home, err := os.UserHomeDir()
+		if err != nil {
+			logger.Errorf("Failed to get home directory: %v", err)
+			os.Exit(1)
+		}
+		configDir := filepath.Join(home, ".config", "gptcommit")
+		if err := os.MkdirAll(configDir, 0755); err != nil {
+			logger.Errorf("Failed to create config directory: %v", err)
+			os.Exit(1)
+		}
+
+		// Create and save configuration
+		configPath := filepath.Join(configDir, "gptcommit.yaml")
+		cfg := map[string]interface{}{
+			"provider": provider,
+			"api_key": apiKey,
+			"model": model,
+			"max_tokens": maxTokensInt,
+		}
+
+		// Write config to file
+		data, err := yaml.Marshal(cfg)
+		if err != nil {
+			logger.Errorf("Failed to marshal config: %v", err)
+			os.Exit(1)
+		}
+
+		if err := os.WriteFile(configPath, data, 0600); err != nil {
+			logger.Errorf("Failed to write config file: %v", err)
+			os.Exit(1)
+		}
+
+		logger.Info("Configuration saved successfully!")
 	},
 }

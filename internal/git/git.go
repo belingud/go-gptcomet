@@ -102,7 +102,7 @@ func (r *Repository) IsIgnored(file string) (bool, error) {
 	cmd.Dir = r.path
 
 	if err := cmd.Run(); err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		if _, ok := err.(*exec.ExitError); ok {
 			// Exit code 1 means the file is not ignored
 			return false, nil
 		}
