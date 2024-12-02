@@ -25,14 +25,24 @@ var version = "dev"
 // Style definitions
 var (
 	successStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
-	boxStyle = lipgloss.NewStyle().
-		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("2")).
-		Padding(0, 1)
+	boxStyle     = lipgloss.NewStyle().
+			BorderStyle(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("2")).
+			Padding(0, 1)
 )
 
 func formatCommitMessage(msg string) string {
 	return boxStyle.Render(successStyle.Render(msg))
+}
+
+func readMaskedInput(prompt string) (string, error) {
+	fmt.Print(prompt)
+	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
+	if err != nil {
+		return "", err
+	}
+	fmt.Println() // add newline
+	return string(bytePassword), nil
 }
 
 func main() {
@@ -54,48 +64,6 @@ func main() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
-	}
-}
-
-func readMaskedInput(prompt string) (string, error) {
-	var result []byte
-	fmt.Print(prompt)
-
-	// Get the terminal file descriptor
-	fd := int(syscall.Stdin)
-	oldState, err := term.MakeRaw(fd)
-	if err != nil {
-		return "", err
-	}
-	defer term.Restore(fd, oldState)
-
-	for {
-		var b [1]byte
-		n, err := syscall.Read(fd, b[:])
-		if err != nil {
-			return "", err
-		}
-		if n == 0 {
-			continue
-		}
-
-		switch b[0] {
-		case 3: // ctrl+c
-			return "", fmt.Errorf("interrupted")
-		case 13: // enter
-			fmt.Print("\n")
-			return string(result), nil
-		case 127: // backspace
-			if len(result) > 0 {
-				result = result[:len(result)-1]
-				fmt.Print("\b \b") // erase last * character
-			}
-		default:
-			if b[0] >= 32 { // printable characters
-				result = append(result, b[0])
-				fmt.Print("*")
-			}
-		}
 	}
 }
 
