@@ -27,5 +27,8 @@ go.work.sum
 # env file
 .env
 
+# build
+dist
+
 var/
 .vscode
